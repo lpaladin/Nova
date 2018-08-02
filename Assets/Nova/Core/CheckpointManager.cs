@@ -7,7 +7,6 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using Boo.Lang.Runtime;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -15,11 +14,11 @@ namespace Nova
 {
 	#region SerializeUtil
 
-    /// <summary>
-    /// Implementation of Serializable HashSet.
-    /// The original HashSet is not serializable.
-    /// </summary>
-    /// <typeparam name="T">Type of value in HashSet</typeparam>
+	/// <summary>
+	/// Implementation of Serializable HashSet.
+	/// The original HashSet is not serializable.
+	/// </summary>
+	/// <typeparam name="T">Type of value in HashSet</typeparam>
 	[Serializable]
 	public class SerializableHashSet<T> : HashSet<T>
 	{
@@ -41,9 +40,9 @@ namespace Nova
 
 	#region SaveTypes
 
-    /// <summary>
-    /// Containing progress and snapshots of reached FlowChartNode.
-    /// </summary>
+	/// <summary>
+	/// Containing progress and snapshots of reached FlowChartNode.
+	/// </summary>
 	[Serializable]
 	public class NodeSaveInfo
 	{
@@ -57,9 +56,9 @@ namespace Nova
 		}
 	}
 
-    /// <summary>
-    /// Global save file. Containing progress of FlowChartTree.
-    /// </summary>
+	/// <summary>
+	/// Global save file. Containing progress of FlowChartTree.
+	/// </summary>
 	[Serializable]
 	public class GlobalSave
 	{
@@ -68,29 +67,34 @@ namespace Nova
 		public readonly long GlobalSaveIdentifier = DateTime.Now.ToBinary();
 	}
 
-    /// <summary>
-    /// Individual save file.
-    /// Acting as a "Bookmark" recording current FlowChartNode and index of dialogue.
-    /// </summary>
+	/// <summary>
+	/// Individual save file.
+	/// Acting as a "Bookmark" recording current FlowChartNode and index of dialogue.
+	/// </summary>
 	[Serializable]
 	public class Bookmark
 	{
-		public readonly string NodeName;
 		public readonly int DialogueIndex;
+		public readonly List<string> NodeHistory;
 		public long GlobalSaveIdentifier;
 
-		public Bookmark(string nodeName, int dialogueIndex)
+		/// <summary>
+		/// Create a bookmark based on all reached nodes in current gameplay.
+		/// </summary>
+		/// <param name="nodeHistory">List of all reached nodes, including the current one as the last node.</param>
+		/// <param name="dialogueIndex">Index of the current dialogue.</param>
+		public Bookmark(List<string> nodeHistory, int dialogueIndex)
 		{
-			NodeName = nodeName;
+			NodeHistory = new List<string>(nodeHistory);
 			DialogueIndex = dialogueIndex;
 		}
 	}
 
 	#endregion
 
-    /// <summary>
-    /// Manager component providing ability to manage game progress and save files.
-    /// </summary>
+	/// <summary>
+	/// Manager component providing ability to manage game progress and save files.
+	/// </summary>
 	public class CheckpointManager : MonoBehaviour
 	{
 		private const int Version = 1;
@@ -107,9 +111,9 @@ namespace Nova
 
 		public HashSet<int> UsedSaveSlots { get; private set; }
 
-        /// <summary>
-        /// Initalization of members which are unlikely to change in the future
-        /// </summary>
+		/// <summary>
+		/// Initalization of members which are unlikely to change in the future
+		/// </summary>
 		public void InitVariables()
 		{
 			_savePathBase = Application.persistentDataPath + "/Save/";
@@ -157,42 +161,42 @@ namespace Nova
 			return info;
 		}
 
-        /// <summary>
-        /// Set a dialogue to "reached" state and save the restore entry for the dialogue.
-        /// </summary>
-        /// <param name="nodeName">The name of FlowChartNode containing the dialogue.</param>
-        /// <param name="dialogueIndex">The index of the dialogue.</param>
-        /// <param name="entry">Restore entry for the dialogue</param>
+		/// <summary>
+		/// Set a dialogue to "reached" state and save the restore entry for the dialogue.
+		/// </summary>
+		/// <param name="nodeName">The name of FlowChartNode containing the dialogue.</param>
+		/// <param name="dialogueIndex">The index of the dialogue.</param>
+		/// <param name="entry">Restore entry for the dialogue</param>
 		public void SetReached(string nodeName, int dialogueIndex, GameStateStepRestoreEntry entry)
 		{
 			EnsureSavedNode(nodeName).DialogueRestoreEntries[dialogueIndex] = entry;
 		}
 
-        /// <summary>
-        /// Set a branch to "reached" state.
-        /// </summary>
-        /// <param name="nodeName">The name of FlowChartNode containing the branch.</param>
-        /// <param name="branchName">The name of the branch.</param>
+		/// <summary>
+		/// Set a branch to "reached" state.
+		/// </summary>
+		/// <param name="nodeName">The name of FlowChartNode containing the branch.</param>
+		/// <param name="branchName">The name of the branch.</param>
 		public void SetReached(string nodeName, string branchName)
 		{
 			EnsureSavedNode(nodeName).ReachedBranches.Add(branchName);
 		}
 
-        /// <summary>
-        /// Set an ending to "reached" state.
-        /// </summary>
-        /// <param name="endName">The name of the ending.</param>
+		/// <summary>
+		/// Set an ending to "reached" state.
+		/// </summary>
+		/// <param name="endName">The name of the ending.</param>
 		public void SetReached(string endName)
 		{
 			_globalSave.ReachedEndings.Add(endName);
 		}
 
-        /// <summary>
-        /// Check if the dialogue has been reached and retrieve the restore entry.
-        /// </summary>
-        /// <param name="nodeName">The name of FlowChartNode containing the dialogue.</param>
-        /// <param name="dialogueIndex">The index of the dialogue.</param>
-        /// <returns>The restore entry for the dialogue. Null if not reached.</returns>
+		/// <summary>
+		/// Check if the dialogue has been reached and retrieve the restore entry.
+		/// </summary>
+		/// <param name="nodeName">The name of FlowChartNode containing the dialogue.</param>
+		/// <param name="dialogueIndex">The index of the dialogue.</param>
+		/// <returns>The restore entry for the dialogue. Null if not reached.</returns>
 		public GameStateStepRestoreEntry IsReached(string nodeName, int dialogueIndex)
 		{
 			NodeSaveInfo info;
@@ -203,12 +207,12 @@ namespace Nova
 			return null;
 		}
 
-        /// <summary>
-        /// Check if the branch has been reached.
-        /// </summary>
-        /// <param name="nodeName">The name of FlowChartNode containing the branch.</param>
-        /// <param name="branchName">The name of the branch.</param>
-        /// <returns>Whether the branch has been reached.</returns>
+		/// <summary>
+		/// Check if the branch has been reached.
+		/// </summary>
+		/// <param name="nodeName">The name of FlowChartNode containing the branch.</param>
+		/// <param name="branchName">The name of the branch.</param>
+		/// <returns>Whether the branch has been reached.</returns>
 		public bool IsReached(string nodeName, string branchName)
 		{
 			NodeSaveInfo info;
@@ -217,11 +221,11 @@ namespace Nova
 			return false;
 		}
 
-        /// <summary>
-        /// Check if the ending has been reached.
-        /// </summary>
-        /// <param name="endName">The name of the ending.</param>
-        /// <returns>Whether the ending has been reached.</returns>
+		/// <summary>
+		/// Check if the ending has been reached.
+		/// </summary>
+		/// <param name="endName">The name of the ending.</param>
+		/// <returns>Whether the ending has been reached.</returns>
 		public bool IsReached(string endName)
 		{
 			return _globalSave.ReachedEndings.Contains(endName);
@@ -232,10 +236,10 @@ namespace Nova
 			return string.Format("{0}sav{1:D3}.nsav", _savePathBase, saveId);
 		}
 
-        /// <summary>
-        /// Reset the global save file to clear all progress.
-        /// Note that all the other save files will be invalid.
-        /// </summary>
+		/// <summary>
+		/// Reset the global save file to clear all progress.
+		/// Note that all the other save files will be invalid.
+		/// </summary>
 		public void ResetGlobalSave()
 		{
 			using (var fs = File.OpenWrite(_globalSavePath))
@@ -260,12 +264,12 @@ namespace Nova
 				return (T) _formatter.Deserialize(stream);
 		}
 
-        /// <summary>
-        /// Save a bookmark, and update the global save file too.
-        /// Will throw exception if it fails.
-        /// </summary>
-        /// <param name="saveId">File No. of the bookmark.</param>
-        /// <param name="save">The bookmark to save.</param>
+		/// <summary>
+		/// Save a bookmark, and update the global save file too.
+		/// Will throw exception if it fails.
+		/// </summary>
+		/// <param name="saveId">File No. of the bookmark.</param>
+		/// <param name="save">The bookmark to save.</param>
 		public void SaveBookmark(int saveId, Bookmark save)
 		{
 			using (var fs = File.OpenWrite(ComposeFileName(saveId)))
@@ -277,27 +281,27 @@ namespace Nova
 				WriteSave(_globalSave, fs);
 		}
 
-        /// <summary>
-        /// Load a bookmark.
-        /// Will throw exception if it fails.
-        /// </summary>
-        /// <param name="saveId">File No. of the bookmark.</param>
-        /// <returns>The loaded bookmark.</returns>
+		/// <summary>
+		/// Load a bookmark.
+		/// Will throw exception if it fails.
+		/// </summary>
+		/// <param name="saveId">File No. of the bookmark.</param>
+		/// <returns>The loaded bookmark.</returns>
 		public Bookmark LoadBookmark(int saveId)
 		{
 			using (var fs = File.OpenRead(ComposeFileName(saveId)))
 			{
 				Bookmark result = ReadSave<Bookmark>(fs);
-				if (result.GlobalSaveIdentifier != _globalSave.GlobalSaveIdentifier)
-					throw new RuntimeException("Nova: Save file is incompatible with the global save file");
+				Assert.AreEqual(result.GlobalSaveIdentifier, _globalSave.GlobalSaveIdentifier,
+					"Nova: Save file is incompatible with the global save file");
 				return result;
 			}
 		}
 
-        /// <summary>
-        /// Delete a specified bookmark.
-        /// </summary>
-        /// <param name="saveId">File No. of the bookmark.</param>
+		/// <summary>
+		/// Delete a specified bookmark.
+		/// </summary>
+		/// <param name="saveId">File No. of the bookmark.</param>
 		public void DeleteBookmark(int saveId)
 		{
 			File.Delete(ComposeFileName(saveId));
